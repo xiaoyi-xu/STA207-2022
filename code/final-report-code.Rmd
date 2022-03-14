@@ -1,0 +1,609 @@
+---
+title: "Final Report: The effect of protection of elderly people policy on population-level Covid-19 mortality rate"
+author: "Xiaoyi Xu; 918962492"
+output: rmdformats::readthedown
+---
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+library(rmdformats)
+```
+
+# Abstract
+The project aims to investigate the relationship between the strictness level of protection of elderly people policy(PE Policy) and population-level Covid-19 mortality rate(p-mortality rate) from October 1st 2020 to January 31st 2021 for 20 European countries and United Kingdom, and figure out whether it is causal relation based on WHO COVID-19 data and Protection of elderly people policy data. First, descriptive analysis will be conducted to show time series plot of new cases and new deaths in the world and in different WHO regions, and geographic plot of new deaths in the world map over time. Second, in inferential analysis, a three-way ANOVA model will be used to explore relation between the strictness level of PE policy and p-mortality rate and we find that there is a relationship between strictness level of PE policy and p-mortality rate. Also, we use Tukey Kramer method for pairwise comparison and we find that at the significance level of 0.05, the mean p-mortality rate of level-2 PE policy is significantly lower than that of level-1 PE policy. Last, in sensitivity analysis, model assumptions are checked by diagnostic plots. 
+
+
+# Introduction
+## Background and motivation
+Nowadays, Covid-19 has become a global problem. To control the outbreak of Covid-19, different governments have taken different measures, including containment and closure polices, economic policies, health system policies and vaccine policies.[1] These policies are released to reduce the number of infectious and deaths caused by Covid-19. However, it remains ambiguous whether some of these policies indeed affect the number of infectious and death cases. Also, some holds that Covid-19 is a kind of epidemic, just like common cold, which cannot be eliminated and what we can do is to reduce the severity of symptoms and mortality. According to WHO, Nearly All Coronavirus Deaths in Europe are people aged 60 and Older.[2] Therefore, my interest is sparked to investigate the relation between the strictness of protection of elderly people policy and Covid-19 mortality rate. Comparing the level of mortality across countries has proven difficult because of inherent limitations in the most commonly cited measures (e.g., case-fatality rates).[3] Also,using case fatality rate is not stable to measure the severity of fatality because cumulative cases keep increasing along the time. Therefore, the project uses population-level mortality rate(i.e., new_death/population*10000). Besides, we also want to figure out which strictness level protection of elderly people policy is associated with the lowest population-level mortality rate. By doing this, we can deeply study the relationship between the policy and Covid-19 mortality rate to provide some suggestions for governments' policy strictness level. At a certain level, this is also very likely to provide a favorable idea for people to be aware of the effectiveness of certain policy.
+
+## Data description
+### Source
+Five data sets are used for this project. The first data set is [WHO COVID-19 data](https://covid19.who.int/WHO-COVID-19-global-data.csv) updated from 2020-01-03 to 2022-03-01. It contains 183372 observations and 8 variables. 
+The second data set is [Protection of elderly people policy data]( https://github.com/OxCGRT/covid-policy-tracker/blob/master/data/timeseries/h8_protection_of_elderly_people.csv#L11), which is collected by [Oxford Covid-19 Government Response Tracker](https://www.bsg.ox.ac.uk/research/research-projects/covid-19-government-response-tracker) from 2020-01-01 to 2022-02-17. 
+The third data set is [population data of each country in the world in 2020](https://data.worldbank.org/indicator/SP.POP.TOTL?locations=EU). It contains 266 observations and 3 variables.
+The fourth data set is [GDP data of each country in Europe](https://www.statista.com/statistics/613071/gdp-by-country-in-europe/), which contains 37 observations and 2 variables.
+The fifth data set is [elderly ratio data of each country in the world](https://www.statista.com/statistics/611783/population-size-of-over-65-s-in-european-countries/), which contains 266 observations and 3 variables.
+
+### Variables
+
+1. WHO COVID-19 data contains 8 variables:
+
+- `Date_reported`: date of the observation reported
+
+- `Country_code`: short alphabetic or numeric geographical codes (geocodes) developed to represent countries and dependent areas
+
+- `Country`: the country of the observation
+
+- `WHO_region`: The World Health Organization (WHO) divides the world into six WHO regions, for the purposes of reporting, analysis and administration.
+
+- `New_cases`: the increasing amount of infectious cases in certain country in reported date
+
+- `Cumulative_cases`: the cumulative amount of infectious cases in certain country in reported date
+
+- `New_deaths`: the increasing amount of death cases in certain country in reported date
+
+- `Cumulative_deaths`: the cumulative amount of death cases in certain country in reported date
+
+
+2. Protection of elderly people policy data contains 186 rows and 782 columns. Each row represents a country. The first column represents country code, and the second column represents country name. Each of the following columns represents different strictness levels of protection of elderly people policy. Elderly people are defined here relative to the country, region, or territory being coded, for example the local retirement age, and no absolute chronologic age is defined.[4] For countries in Europe and United Kingdom, elderly people are difined to be those persons age 65 and older.
+
+- 0 - no measures.
+
+- 1 - Recommended isolation, hygiene, and visitor restriction measures in LTCFs and/or elderly people to stay at home.
+
+- 2 - Narrow restrictions for isolation, hygiene in LTCFs, some limitations on external visitors and/or restrictions protecting elderly people at home.
+
+- 3 - Extensive restrictions for isolation and hygiene in LTCFs, all non-essential external visitors prohibited, and/or all elderly people required to stay at home and not leave the home with minimal exceptions, and receive no external visitors.
+
+As can be seen above, from 0 to 3, the restrictions for isolations become narrower, and accordingly the strictness levels of the policy are higher. To combine these two data sets, I plan to rearrange the form of the second data set to make it similar to the form of the first data set.
+
+3. Population data for each country in the world contains 266 observations and 3 variables. Each observation represents a country in the world. Three variables are:
+
+- `Country`: the country of the observation. The variable will be used as the key variable to combine data sets.
+
+- `Country Code`: short alphabetic or numeric geographical codes (geocodes) developed to represent countries and dependent areas.
+
+- `Population`: the number of people in specific country in Europe.
+
+4. GDP data for each country in Europe contains 37 observations and 2 variables. Each observation stands for a country in Europe. Two variables are:
+
+- `Country`: the country of the observation. The variable will be used as the key variable to combine data sets.
+
+- `GDP`(in million euros): the gross domestic product (GDP) in European countries at current market prices in 2020. To get GDP per capita in US dollars, I use GDP/population*1.10 as `GDP per capita` variable, where 1.10 is the exchange rate.
+
+5. Elderly ration data for each each country in the world contains 266 observations and 3 variables. Each observation represents a country. Three variables are:
+
+- `Country`: the country of the observation. The variable will be used as the key variable to combine data sets.
+
+- `Country Code`: short alphabetic or numeric geographical codes (geocodes) developed to represent countries and dependent areas
+
+- `Elderly_ratio`: Population percentage of citizens aged 65 years and older in 2020, by country in the world.
+
+## Questions of Interest
+
+1. Is there a relationship between the strictness level of protection of elderly people policy and Covid-19 population-level mortality rate?
+
+2. Which strictness level protection of elderly people policy is associated with the lowest population-level mortality rate?
+
+
+# Descriptive Analysis
+
+
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+
+library(tidyverse)
+library(dplyr)
+library(plotly)
+library(echarts4r)
+library(echarts4r.maps)
+library(tidyr)
+library(anytime)
+library(qwraps2)
+library(forecast)
+```
+
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(hrbrthemes)
+library(viridis)
+library(plotly)
+```
+
+
+
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+# collect data
+## first data set: covid data
+covid <- read_csv("https://covid19.who.int/WHO-COVID-19-global-data.csv")
+
+covid$Country[covid$Country =="United States of America"]<-"United States"
+covid$Country[covid$Country =="Russian Federation"]<-"Russia"
+covid$Country[covid$Country =="Iran (Islamic Republic of)"]<-"Iran"
+covid$Country[covid$Country =="Congo"]<-"Dem. Rep. Congo"
+covid$Country[covid$Country =="United Republic of Tanzania"]<-"Tanzania"
+covid$Country[covid$Country =="South Sudan"]<-"S. Sudan"
+covid$Country[covid$Country =="Central African Republic"]<-"Central African Rep."
+covid$Country[covid$Country =="Venezuela (Bolivarian Republic of)"]<-"Venezuela"
+covid$Country[covid$Country =="Bolivia (Plurinational State of)"]<-"Bolivia"
+covid$Country[covid$Country =="Viet Nam"]<-"Vietnam"
+covid$Country[covid$Country =="The United Kingdom"]<-"United Kingdom"
+```
+
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+## second data set: elderly policy
+elderly <- read_csv("policy_elderly.csv")
+```
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+long_elderly <- elderly %>% gather(Date, policy, `01Jan2020`:`02Mar2022`)
+long_elderly$Date <- anydate(long_elderly$Date)
+colnames(long_elderly)[3] <- "Country"
+colnames(long_elderly)[4] <- "Date_reported"
+long_elderly <- long_elderly[,-1]
+```
+
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+# join two datasets
+df <- covid %>% left_join(long_elderly, by = c("Date_reported","Country"))
+```
+
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+# delete rows with NA
+# have a quick view of rows with NA
+NA_subset <- df[rowSums(is.na(df)) > 0,]
+df_target <- df[rowSums(is.na(df)) == 0,]
+df_target <- df_target[df_target$New_cases>=0 & df_target$New_deaths>=0,]
+```
+
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+df_target['case_mortality_rate'] <- df_target$New_deaths/df_target$Cumulative_cases*10000
+df_target$Date_reported <- as.Date(df_target$Date_reported)
+```
+
+
+First, after dropping rows with NA and rows with incorrect data which number of cases or deaths are less than zero, a summary table is developed to show range of time, average number of new cases and cumulative cases, average number of new deaths and cumulative cases and average case-mortality rate in different WHO regions.
+```{r,results='asis',echo=FALSE}
+options(qwraps2_markup = 'markdown')
+our_summary1 <-
+  list("Avg_New_cases" =
+       list("min"       = ~ min(New_cases),
+            "median"    = ~ median(New_cases),
+            "max"       = ~ max(New_cases),
+            "mean (sd)" = ~ qwraps2::mean_sd(New_cases)),
+       "Avg_Cumulative_cases" =
+       list("min"       = ~ min(Cumulative_cases),
+            "median"    = ~ median(Cumulative_cases),
+            "max"       = ~ max(Cumulative_cases),
+            "mean (sd)" = ~ qwraps2::mean_sd(Cumulative_cases)),
+       "Avg_New_deaths" =
+       list("min"       = ~ min(New_deaths),
+            "median"    = ~ median(New_deaths),
+            "max"       = ~ max(New_deaths),
+            "mean (sd)" = ~ qwraps2::mean_sd(New_deaths)),
+       "Avg_Cumulative_deaths" =
+       list("min"       = ~ min(Cumulative_deaths),
+            "median"    = ~ median(Cumulative_deaths),
+            "max"       = ~ max(Cumulative_deaths),
+            "mean (sd)" = ~ qwraps2::mean_sd(Cumulative_deaths)),
+       "Avg_case_mortality_rate" = 
+         list("min"       = ~ min(case_mortality_rate),
+            "median"    = ~ median(case_mortality_rate),
+            "max"       = ~ max(case_mortality_rate),
+            "mean (sd)" = ~ qwraps2::mean_sd(case_mortality_rate)),
+       "Time_range" =
+         list("min"       = ~ toString(min(Date_reported)),
+            "max"       = ~ toString(max(unique(Date_reported)))
+       ))
+by_who <- summary_table(dplyr::group_by(df_target, WHO_region), our_summary1)
+# title("gg")
+print(by_who, title = "TABLE 1: ")
+```
+
+As we can see above, the data set collects Covid-19 data from 2020-01-03 to 2022-03-01. There are 127989 observations in total. More specifically, EURO region has most observations, which is 37621, while SEARO has least observations, which is 7016. For average new cases, EURO has the largest median and SEARO has the largest mean and standard deviation. For average cumulative cases, EMRO has the largest median and SEARO has the largest mean and standard deviation.For average new deaths, SEARO has the largest mean and standard deviation. For average cumulative deaths, EMRO and EURO have the largest median and AMRO has the largest mean and standard deviation. For case mortatility rate (i.e. new death/cumulative cases\*10000), we can see a lot of NA, because when number of cumulative cases equal to zero, case mortatility rate will get NA. Also, number of cumulative cases keeps increasing, even though number of new deaths does not change, case mortality rate will decrease, therefore, it is inappropriate to use case mortality rate in this project to study the relationship. Instead, I use population level mortality rate(i.e., new_death/population\*10000).
+
+Next, let us see the trend of new cases and new deaths over time in the world. 
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+#first plot
+
+#trend of new_cases
+ggplot(df_target, aes(x=Date_reported, y=New_cases, color=WHO_region)) + 
+  geom_bar(stat="identity", width=0.1, color = "grey") + 
+  geom_line()+scale_x_date(date_labels="%Y %m",date_breaks  ="1 month") +  
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  ggtitle("The trend of new cases over time in the world")
+```
+
+First, in the trend plot of new cases over time in the world above, grey lines represent the number of total new cases in the world and different colors lines represent total new cases in different WHO regions. We can find that there are four obvious wave during this time period. The first wave is from October 2020 to Febraury 2021, the second wave is from February 2021 to July 2021, the third wave is from July 2021 to October 2021 and the fourth wave is from October 2021 to now. 
+
+Second, from the trend plot of new cases over time in the world below, we can find that there are three obvious wave during this time period. The first wave is from October 2020 to March 2021, the second wave is from March 2021 to July 2021 and the third wave is from July 2021 to October 2021. The time periods of the three waves are corresponding to those of new cases wave. Besides, there are three gentle waves compared the three obvious waves. One is from March 2020 to May 2020, one is from May 2020 to October 2020 and another one is from January 2022 to now.
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+ggplot(df_target, aes(x=Date_reported, y=New_deaths, color=WHO_region)) + 
+  geom_bar(stat="identity", width=0.1, color = "grey") + 
+  geom_line()+scale_x_date(date_labels="%Y %m",date_breaks  ="1 month") +  
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  ggtitle("The trend of new deaths over time in the world")
+
+```
+
+Then, let us have a view at time series plot of new deaths in different WHO regions. As can be seen below, for EURO and AMRO region, there is obvious rise of new deaths from October 1st 2020 to January 31st 2021. Also, from trend plots before, we can know it is the first obvious wave for both new cases and new deaths, which motivate me to study the relationship of protection of elderly people policy on population-level Covid-19 mortality rate in this time period. Due to data for EURO are more accessible, I plan to study the relationship of the PE policy and population-level mortality rate in EURO from October 1st 2020 to January 31st 2021.
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+# third plot
+df_target$month<-format(as.Date(df_target$Date_reported, "%Y-%m-%d"), "%Y-%m")
+data_region<-df_target %>%  filter(WHO_region != "Other") %>% group_by(WHO_region,month) %>%
+mutate(RNew_cases=sum(New_cases),   RCumulative_cases=sum(Cumulative_cases), 
+  RNew_deaths=sum(New_deaths),
+  RCumulative_deaths=sum(Cumulative_deaths))%>%
+  select(month,WHO_region,RNew_cases,RNew_deaths,RCumulative_cases,RCumulative_deaths)%>% distinct()
+
+
+p2 <- data_region %>% 
+  highlight_key(~WHO_region) %>%
+  ggplot(aes(y = RNew_deaths, x = month, color = WHO_region,
+             )) + labs(title = "Time series plot of new deaths in different WHO regions")+geom_line(aes(group = WHO_region)) +ylab('WHO_region')+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+
+ggplotly(p2, tooltip = c('x', 'group', 'text')) %>% 
+  highlight(on = "plotly_hover", off = "plotly_doubleclick") %>% 
+  layout(
+    updatemenus = list(list(
+      type = "buttons", 
+      direction = "left", 
+      xanchor = "left",
+      yanchor = "top", 
+      showactive = FALSE,
+      buttons = list(list(
+        method = "restyle", args = list("visible", "all"), label = "show all"),
+        list(method = "restyle", args = list("visible", "legendonly"), label = "hide all")
+      )
+    ))
+  )
+
+
+```
+
+
+After having an impression on Covid-19 situation all over the world, our attention turns to the status of PE Policy in the world.
+
+
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+# fourth plot
+## timeline geographic plot (some countries lost)
+df_target %>% 
+  group_by(Date_reported) %>% 
+  e_charts(Country, timeline = TRUE) %>%
+  e_map(policy) %>% 
+  e_visual_map(policy)  %>%
+  e_title("The policy status over countries in the World")
+```
+
+In the timeline geographic plot above, the redder the color, the stricter the PE policy. We can find the first country taking out PE policy is Bolivia, and then India and China. We can also see different countries take outa different strict level PE policy. Focus on EURO region from October 1st 2020 to January 31st 2021, we can find from the following plot that PE policy for most countries does not change during this time period. For those countries with policy changes, it is hard to measure the relation/effect of the policy due to lagged effect and different levels of enforcement among different countries. Therefore, it is natural to simplify study procedure by focusing on some countries in which the PE policy does not change during the time.
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+df_date <-   df_target[df_target$Date_reported >='2020-10-01' & df_target$Date_reported <='2021-01-31',]
+df_model <- df_date[df_date$WHO_region=="EURO",]
+df_model %>% 
+  group_by(Date_reported) %>% 
+  e_charts(Country, timeline = TRUE) %>%
+  e_map(policy) %>% 
+  e_visual_map(policy) %>%
+  e_title("The policy status over countries in EURO")
+```
+
+According to this strategy, to capture most of information about population-level motality rate and avoid unusual fluctuation of population-level mortality rate due to low population, 20 countries in EURO region with population larger than 700,000 and United Kingdom are chosen. Also, due to it is time series data, we plan to aggregate data by week to make sure independence between observations. 
+
+In total, the study focuses on twenty one countries: Albania, Belgium, Bosnia and Herzegovina, Croatia, Finland, France, Georgia, Germany, Greece, Greenland, Iceland, Ireland, Israel, Italy, Liechtenstein, Malta, Portugal, Romania, Spain, Sweden and United Kingdom. These countries share two commons: 1. The PE policy did not change from October 1st 2020 to January 31st 2021. 2. Under the first condition, 21 countries have populations in excess of 700,000. Given by our strategy, there is a hidden assumption: the effect of policy has achieved stable condition before October 1st 2020.
+
+Now, let us have a look at the status of PE policy in these twenty one countries. Different columns represent different level of PE policy. From 1 to 3, the strictness level of PE policy increases. Each row represents a country. From the table, we can find Georgia, Greenland, Liechtenstein, Romania, and Spain took out level "1" policy. Belgium, Finland, France, Germany, Iceland, Italy, Malta and Portugal took out level "2" policy. Albania, Bosnia and Herzegovina, Croatia, Greece, Ireland, Israel, Sweden and United Kingdom took out level "3" policy.
+
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+# countries in europe and United Kindom
+
+df_e <-df_date[df_date$WHO_region == 'EURO',]
+
+d <- aggregate(df_e$policy, by=list(Category=df_e$Country), FUN=sum)
+d1 <- d[d$x==123 | d$x==246| d$x==369,]
+name = d1$Category
+i <-1
+datalist = list()
+for(i in 1:21){
+  datalist[[i]] <- df_e[df_e$Country == name[i],]
+}
+df_euro = do.call(rbind, datalist)
+
+
+
+```
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+# third data set: population
+pop <- read_csv("/Users/xiaoyixu/Desktop/207/project2/pop.csv")
+df_new <- df_euro %>% left_join(pop, by = "Country")
+df_new['mortality'] <- df_new$New_deaths/df_new$Population*100000
+
+cross <- table(df_new$Country,df_new$policy)
+knitr::kable(addmargins(cross), col.names = c("Policy=1", "Policy=2", "Policy=3", "sum"), caption = " TABLE2: The table of status of PE policy among countries")
+
+#ggplot(df_new, aes(x=Date_reported, y=mortality, color=Country)) + 
+  #geom_bar(stat="identity", width=0.1, color = "grey") + 
+  #geom_line()+scale_x_date(date_labels="%Y %m",date_breaks  ="1 month") +  
+  #theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  #ggtitle("The trend of mortality over time EURO countries",)
+
+```
+
+
+Then, how about the population-level mortality(p-mortality) rate in these three countries?
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+p2 <- df_new %>% 
+  highlight_key(~Country) %>%
+  ggplot(aes(y = mortality, x = Date_reported, color = Country,
+             )) + labs(title = "Time Series plot of population-level mortality rate in different countries")+geom_line(aes(group = Country)) +ylab('Country')+
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1))
+
+
+ggplotly(p2, tooltip = c('x', 'group', 'text')) %>% 
+  highlight(on = "plotly_hover", off = "plotly_doubleclick") %>% 
+  layout(
+    updatemenus = list(list(
+      type = "buttons", 
+      direction = "left", 
+      xanchor = "left",
+      yanchor = "top", 
+      showactive = FALSE,
+      buttons = list(list(
+        method = "restyle", args = list("visible", "all"), label = "show all"),
+        list(method = "restyle", args = list("visible", "legendonly"), label = "hide all")
+      )
+    ))
+  )
+```
+
+From the interactive time series plot above, we can find the p-mortality for Albania, Belgium, Bosnia and Herzegovina, Croatia, Georgia, Greece and Malta, first increased, and then decreased. For Finland and Iceland, p-mortality was near to 0 and have a slight fluctuation. For France, German and Italy, p-mortality fluctuated between 1 and 2. For Portugal and United Kingdom, p-mortality increased in general. For Romania, Spain, Sweden, Greenland and Israel, p-mortality fluctuated between 0 and 1.For Liechtenstein, p-mortality has a violent fluctuation. In conclusion, there is no common pattern for p-mortality among these eleven countries.
+
+
+# Inferential Analysis
+
+In order to study the relationship between PE policy and p-mortality rate, let us see the boxplot and main effect plot of p-mortality among countries with different policy. From boxplot, there are several outliers in each group. From the main effect plot, mean of p-mortality rate of the third group is the lowest, and mean of p-mortality rate of the first group is the highest. However, the range of p-mortality rate of three groups overlaps, so we can not tell which group has the highest or lowest p-mortality rate just from plots. Under the circumstance, influential analysis is conducted.
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE,out.width="50%"}
+#knitr::include_graphics("foo/bar.png")
+library(dplyr)
+
+df_model <-df_new %>%
+  group_by(Country, week = lubridate::week(Date_reported)) %>%
+  summarise(mortality = mean(mortality), policy = mean(policy))
+
+gdp_pc <- read_csv("/Users/xiaoyixu/Desktop/207/project2/gdp_pc.csv")
+gdp_2020 <- gdp_pc[gdp_pc$Year=="2020",]
+colnames(gdp_2020)[1] <- "Country"
+colnames(gdp_2020)[4] <- "gdp_per"
+df_model <- df_model %>% left_join(gdp_2020, by = "Country")
+df_model <- df_model %>% left_join(pop, by = "Country")
+df_model <-df_model[df_model$Population>=700000,] #700000 #500000 # 600000 best
+
+
+elderly_ratio <- read_csv("/Users/xiaoyixu/Desktop/207/project2/elderly.csv")
+df_model <- df_model %>% left_join(elderly_ratio, by = "Country")
+
+df_model$policy <- as.factor(df_model$policy)
+
+
+# categorical
+df_model[df_model$Elderly_pop<=19.23,]$Elderly_pop <- 0 # low
+df_model[df_model$Elderly_pop>19.23,]$Elderly_pop <- 1
+df_model$Elderly_pop <- as.factor(df_model$Elderly_pop)
+
+
+df_model[ df_model$gdp_per<=37673,]$gdp_per <- 0 #37673
+df_model[df_model$gdp_per>37673,]$gdp_per <- 1
+df_model$gdp_per <- as.factor(df_model$gdp_per)
+
+df_model$Country <- as.factor(df_model$Country)
+
+# boxplot and main effect plot
+
+df_model %>%
+  ggplot( aes(x=policy, y=mortality, fill=policy)) +
+    geom_boxplot() +
+    scale_fill_viridis(discrete = TRUE, alpha=0.6, option="A") +
+    theme_ipsum() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    ggtitle("Boxplot of p-mortality v.s. different level of PE policy") +
+    xlab("")
+library(gplots)
+#jpeg(file="plotmeans.jpeg")
+#plotmeans(df_model$mortality~df_model$policy, data = df_model, xlab="PE policy", ylab="P-mortality rate",title = "Main effect plot of PE policy on P-mortality rate")
+#dev.set(dev.next())
+
+plotmeans(df_model$mortality~df_model$policy, data = df_model, xlab="PE policy", ylab="P-mortality rate") 
+title("Main effect plot of PE policy on P-mortality rate")
+
+```
+
+We can define a three-way ANOVA model as follows: 
+$$\begin{equation}
+Y_{ijkt} = \mu_{\cdot\cdot\cdot} + \alpha_i + \beta_j + \gamma_k+ \epsilon_{ijkt}, t = 1,...,n_{ijk}, i = 1,2,3, j = 1,2, k = 1,2
+\end{equation}$$
+
+where $\epsilon_{ijkt}\sim_{i.i.d}N(0, \sigma^2)$ and 
+
+$$\begin{equation}
+\sum^{3}_{1}\alpha_i = 0, \sum^{2}_{1}\beta_j = 0,\sum^{2}_{1}\gamma_k = 0
+\end{equation}$$ 
+In this model, 
+
+* the index $i$ represents the level of PE policy: the least strictness PE policy $(i = 1)$, the regular strictness PE policy $(i = 2)$, the most strictness PE policy $(i = 3)$. 
+
+The index $j$ represents elderly ratio: elderly_ratio <= 19.23$(j = 1)$, elderly_ratio > 19.23$(j = 2)$.19.23 is the average elderly ratio among these countries, so we use it as the dividing line. Countries with elderly ratio lower than 20.6 are regarded as low elderly ratio countries in EURO, and Countries with elderly ratio higher than 20.6 are regarded as high elderly ratio countries in EURO.
+
+The index $k$ represents GDP per capita: GDP per capita <= 37673$(k = 1)$, GDP per capita > 37673$(k = 2)$. 37673 is the averge GDP per capita among these countries, so it is used as dividing line. Similarly. Countries with GDP per capita lower than 37673 are regarded as low GDP per capita countries in EURO, and Countries with GDP per capita higher than 37673 are regarded as high GDP per capita countries in EURO.
+
+* $Y_{ijkt}$ is the p-motality rate of the country with the $i$th level of PE policy and with the $j$th level of elderly ration and with the $k$th level of GDP per capita.
+
+* $\mu_{\cdot\cdot\cdot}$ indicates the overall p-mortality rate across countries with three types of policy .
+
+* $\{\epsilon_{ijkt}\}$ is the error term, which contains unexplained effect on p-mortality.
+
+Then, before checking interaction term, we first check if Box Cox transformation is needed here. A Box Cox transformation is a transformation of non-normal dependent variables into a normal shape and Normality is a necessary assumption for ANOVA model.
+
+For Box Cox transformation, $\lambda$, which varies from -5 to 5, is the core. The optimal value of $\lambda$ is selected by optimizing the best approximation of a normal distribution curve. 
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+library(car)
+boxCox(aov((mortality)~policy+Elderly_pop+gdp_per, data = df_model))
+```
+
+As above, $\lambda$ is near zero, so we can do log transformation here. After log transformation of response variable, our three-way ANOVA model becomes:
+$$\begin{equation}
+log(Y_{ijkt}) = \mu_{\cdot\cdot\cdot} + \alpha_i + \beta_j + \gamma_k+ \epsilon_{ijkt}, t = 1,...,n_{ijk}, i = 1,2,3, j = 1,2, k = 1,2
+\end{equation}$$
+
+where $\epsilon_{ijkt}\sim_{i.i.d}N(0, \sigma^2)$ and 
+
+$$\begin{equation}
+\sum^{3}_{1}\alpha_i = 0, \sum^{2}_{1}\beta_j = 0,\sum^{2}_{1}\gamma_k = 0
+\end{equation}$$ 
+
+Next, we check if interaction term is needed in this model. Under the circumstance, we set the null and alternative hypothesis as follows and perform likelihood ratio test:
+
+$$\begin{equation}
+H_0: \{\alpha\beta\}_{ij} =\{\alpha\gamma\}_{ik}= \{\beta\gamma\}_{jk} = 0 \quad v.s. \quad H_1: not \  all \  \{\alpha\beta\}_{ij},\{\alpha\gamma\}_{ik}, \ are \ 0
+\end{equation}$$
+
+As we can see the result in the following table: The $p$ value is 0.6957, which means that we should not reject the null hypothesis at the significance level of 0.05, and therefore the interaction term should be dropped.
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+options(qwraps2_markup = "markdown")
+library(gtsummary)
+library(lmtest)
+reduced_model = aov(log(mortality)~policy+Elderly_pop+gdp_per, data = df_model)
+full_model = aov(log(mortality)~policy*Elderly_pop*gdp_per, data = df_model)
+qable(lrtest(full_model,reduced_model))
+```
+
+
+The assumptions on the proposed additive three-way ANOVA model are:
+
+(1) Factors have a additive and linear influence on the mean of the response variable
+(2) Normality: the errors $\{\epsilon_{ijkt}\}$ are normally distributed.
+(3) Independence: the errors $\{\epsilon_{ijkt}\}$ are mutually independent;
+(4) Homogeneity: all the errors $\{\epsilon_{ijkt}\}$ have the same variance;
+
+Assumptions will be tested in sensitivity analysis, for now, we fit the three-way ANOVA model by using `aov()` and the detail of the model is shown below:
+
+
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+library(rstatix)
+library(kableExtra)
+aov.fit <- aov(log(mortality)~policy+Elderly_pop+gdp_per, data = df_model)
+summary(aov.fit)
+# qable(summary(aov.fit))
+```
+
+To answer the primary question of interest, we conduct $F$ test. The null and alternative hypothesis are as follows:
+
+$$\begin{equation}
+H_0: \alpha_1 = \alpha_2 = \alpha_3 = 0 \quad v.s. \quad H_1: not \  all \  \alpha_i \ are \ zero
+\end{equation}$$
+
+We get the result of F test as follows, which are equal to the p values in ANOVA table.
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+# summary(aov.fit)
+tbl_regression(aov.fit,exponentiate = TRUE)
+```
+
+The significance level we chose is $\alpha  = 0.05$, the $p$-value of policy is $0.011833$, which indicates that we should reject the null hypothesis conclude that not all $\alpha_i$ are zero in the significance level of 0.05. Therefore, there is a difference in p-mortality rate across different strictness level of policy.
+
+The $p$-value of elferly ratio is $0.699763$, which indicates that we cannot reject the null hypothesis conclude that not all $\beta_j$ are zero in the significance level of 0.05. 
+
+The $p$-value of gdp per capita is $0.000965$, which indicates that we should reject the null hypothesis conclude that not all $\gamma_k$ are zero in the significance level of 0.05. Therefore, there is a difference in p-mortality rate across different levels of gdp.
+
+For the second question of interest, we use Tukey-Kramer method at significance level of 0.05.
+
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+# TukeyHSD(aov.fit, "policy") #  significance level 0.05
+qable(TukeyHSD(aov.fit, "policy")$policy)
+```
+
+As we can see above, Tukey method suggests that: at the significance level of 0.05, the mean p-mortality rate of level-2 PE policy is significantly lower than that of level-1 PE policy. However, we can not figure out which mean p-mortality rate is lower among level-2 and level-3 policy because p-value is larger than 0.05 and confidence interval of the difference includes 0.
+
+# Sensitivity Analysis
+
+We check whether assumptions are plausible by diagnostic plots:
+```{r, message=FALSE, echo = FALSE, warning=FALSE}
+par(mfrow=c(2,2))
+plot(aov.fit)
+```
+From diagnostic plots, we can find:
+
+* The Residuals v.s. Fitted Values plot shows a nearly equal spread of the residuals along the horizontal axis, therefore the homogeneity assumption seems to hold.
+
+* The Q-Q plot is still a little left skewed after log transformation, so normality assumption may be violated.
+
+* The other two plots indicate that no obvious outlier shows a significant influence on the response variable and related factors.
+
+For independence assumption, as we mention before, we aggregate data by week to make sure independence between observations.
+
+Although Q-Q plot is a little left skewed, studies have prove that F-test(ANOVA) is robust to non-normal cases in terms of Type I error[6] and the empirical type II error[7]. Therefore, the result of inferential analysis is feasible given the robust of ANOVA(F-test).
+
+# Counclusion
+
+The project uses both descriptive analysis and inferential analysis to explore the relationship between strictness level of protection of elderly policy and population-level mortality rate. The main conclusion for two questions of interests is:
+
+* There is a relationship between strictness level of PE policy and p-mortality rate
+
+* At the significance level of 0.05, the mean p-mortality rate of level-2 PE policy is significantly lower than that of level-1 PE policy, but we can not figure which level of strictness corresponding to the lowest p-mortality rate.
+
+Based on our findings, protection of elderly people policy plays an important role in population-level mortality. Therefore, to reduce p-mortality and ensure the freedom of elderly people as much as possible, government should adopt medium level strictness PE policy. That is, narrow restrictions for isolation, hygiene in LTCFs, some limitations on external visitors and/or restrictions protecting elderly people at home.
+
+Admittedly, a caveat of the current analysis is we have no idea about whether the relationship between strictness level of PE policy and p-mortality rate is causal inference or not. In the project, we mainly focus on investigating the relationship, but the relation does not mean adopting medium strictness level policy will cause the decrease of p-mortality rate.  To solve the caveat, we need further causal analysis on observational data. 
+
+# Reference
+
+[1] https://www.bsg.ox.ac.uk/research/research-projects/covid-19-government-response-tracker
+
+[2] https://www.usnews.com/news/world-report/articles/2020-04-02/who-nearly-all-coronavirus-deaths-in-europe-are-people-aged-60-and-older
+
+[3] https://genus.springeropen.com/articles/10.1186/s41118-021-00115-9
+
+[4] https://github.com/OxCGRT/covid-policy-tracker/blob/master/documentation/interpretation_guide.md
+
+[5] https://genus.springeropen.com/articles/10.1186/s41118-021-00115-9
+
+[6] Blanca Mena, María José, et al. "Non-normal data: Is ANOVA still a valid option?." Psicothema (2017).
+
+[7] Schmider, Emanuel, et al. "Is it really robust?." Methodology (2010).
+
+[8][9] Mayntz, Renate. Causal mechanism and explanation in social science. No. 20/7. MPIfG Discussion Paper, 2020.
+
+# Appendix - Github link {-}
+
+https://github.com/xiaoyi-xu/STA207-2022
+
+# Session info {-}
+
+```{r}
+sessionInfo()
+```
